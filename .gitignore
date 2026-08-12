@@ -1,0 +1,5 @@
+.env
+storage/*.sqlite
+storage/database.sqlite
+vendor/
+catatan.md
