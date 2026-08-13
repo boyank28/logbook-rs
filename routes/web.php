@@ -91,6 +91,12 @@ switch ($route) {
     case 'logbook_update_status':
         (new LogbookController())->updateStatus();
         break;
+    case 'logbook_upload_attachment':
+        (new LogbookController())->uploadAttachment();
+        break;
+    case 'logbook_add_comment':
+        (new LogbookController())->addComment();
+        break;
 
     case 'templates':
         (new TemplateController())->index();

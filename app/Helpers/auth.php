@@ -109,10 +109,18 @@ function render_topbar(string $pageTitle, string $extraHtml = ''): void {
         <div class="header-date"><?= date('d F Y H:i') ?></div>
         
         <!-- Notification Bell with Interactive Dropdown -->
+        <?php
+        require_once __DIR__ . '/../Models/Logbook.php';
+        $recentNotifs = [];
+        try {
+            $recentNotifs = Logbook::getAll([], 5);
+        } catch (\Throwable $t) {}
+        $initialBadgeCount = count($recentNotifs);
+        ?>
         <div class="notification-wrapper">
           <div class="notification-bell" onclick="toggleNotifications(event)">
             🔔
-            <span class="bell-badge" id="notifBadge">5</span>
+            <span class="bell-badge" id="notifBadge" style="<?= $initialBadgeCount === 0 ? 'display:none;' : '' ?>"><?= $initialBadgeCount ?></span>
           </div>
 
           <div class="notification-dropdown" id="notifDropdown">
@@ -121,46 +129,29 @@ function render_topbar(string $pageTitle, string $extraHtml = ''): void {
               <span style="font-size: 10px; color:#2563eb; cursor:pointer;" onclick="markAllRead()">Tandai Dibaca</span>
             </div>
             <div class="notification-list">
-              <a href="<?= BASE_URL ?>/index.php?route=logbook_detail&id=5" class="notification-item unread">
-                <span>🚨</span>
-                <div>
-                  <strong>Log Insiden Baru</strong>
-                  <div>Akses Tidak Sah SIMRS terdeteksi</div>
-                  <div style="color:var(--text-muted); font-size:10px;">10 menit lalu</div>
-                </div>
-              </a>
-              <a href="<?= BASE_URL ?>/index.php?route=logbook_detail&id=1" class="notification-item unread">
-                <span>🌐</span>
-                <div>
-                  <strong>Log Jaringan (Tinggi)</strong>
-                  <div>Internet Putus di Unit IGD</div>
-                  <div style="color:var(--text-muted); font-size:10px;">30 menit lalu</div>
-                </div>
-              </a>
-              <a href="<?= BASE_URL ?>/index.php?route=logbook_detail&id=2" class="notification-item unread">
-                <span>📋</span>
-                <div>
-                  <strong>Gangguan SIMRS</strong>
-                  <div>SIMRS tidak dapat login oleh Siti</div>
-                  <div style="color:var(--text-muted); font-size:10px;">1 jam lalu</div>
-                </div>
-              </a>
-              <a href="<?= BASE_URL ?>/index.php?route=logbook_detail&id=3" class="notification-item">
-                <span>🖥️</span>
-                <div>
-                  <strong>Server Database</strong>
-                  <div>Server Database Lambat diselesaikan</div>
-                  <div style="color:var(--text-muted); font-size:10px;">2 jam lalu</div>
-                </div>
-              </a>
-              <a href="<?= BASE_URL ?>/index.php?route=logbook_detail&id=4" class="notification-item">
-                <span>⚙️</span>
-                <div>
-                  <strong>Backup Maintenance</strong>
-                  <div>Backup Harian Server Selesai</div>
-                  <div style="color:var(--text-muted); font-size:10px;">3 jam lalu</div>
-                </div>
-              </a>
+              <?php if (empty($recentNotifs)): ?>
+                <div style="padding:16px; text-align:center; color:#64748b; font-size:12px;">Belum ada notifikasi.</div>
+              <?php else: ?>
+                <?php foreach ($recentNotifs as $n): 
+                  $cat = strtolower($n['category'] ?? '');
+                  $icon = '📝';
+                  if (strpos($cat, 'simrs') !== false) $icon = '📋';
+                  elseif (strpos($cat, 'jaringan') !== false) $icon = '🌐';
+                  elseif (strpos($cat, 'server') !== false) $icon = '🖥️';
+                  elseif (strpos($cat, 'insiden') !== false) $icon = '🚨';
+
+                  $createdTime = !empty($n['created_at']) ? date('d/m/Y H:i', strtotime($n['created_at'])) : 'baru saja';
+                ?>
+                  <a href="<?= BASE_URL ?>/index.php?route=logbook_detail&id=<?= $n['id'] ?>" data-id="<?= $n['id'] ?>" onclick="markItemRead('<?= $n['id'] ?>')" class="notification-item unread">
+                    <span><?= $icon ?></span>
+                    <div>
+                      <strong><?= htmlspecialchars($n['title']) ?></strong>
+                      <div><?= htmlspecialchars(mb_strimwidth($n['description'] ?? '', 0, 45, '...')) ?></div>
+                      <div style="color:var(--text-muted); font-size:10px;"><?= htmlspecialchars($n['unit_name'] ?? 'Unit') ?> • <?= $createdTime ?></div>
+                    </div>
+                  </a>
+                <?php endforeach; ?>
+              <?php endif; ?>
             </div>
             <div class="notification-footer">
               <a href="<?= BASE_URL ?>/index.php?route=logbook" style="color:#2563eb; text-decoration:none;">Lihat Semua Notifikasi →</a>

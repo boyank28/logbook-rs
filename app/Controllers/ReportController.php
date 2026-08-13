@@ -1,15 +1,24 @@
 <?php
 require_once __DIR__ . '/../Models/Logbook.php';
+require_once __DIR__ . '/../Models/LogbookTemplate.php';
 require_once __DIR__ . '/../Models/AuditLog.php';
 require_once __DIR__ . '/../Models/User.php';
 require_once __DIR__ . '/../Models/Unit.php';
 
 class ReportController {
     public function index() {
-        $stats = Logbook::getStats();
+        $filters = [
+            'start_date' => $_GET['start_date'] ?? date('Y-m-01'),
+            'end_date' => $_GET['end_date'] ?? date('Y-m-t'),
+            'template_id' => $_GET['template_id'] ?? '',
+            'unit_id' => $_GET['unit_id'] ?? ''
+        ];
+
+        $reportData = Logbook::getReportSummary($filters);
         $templates = LogbookTemplate::getAll();
         $units = Unit::getAll();
         $title = "Laporan Logbook - Logbook RS";
+
         require_once __DIR__ . '/../../resources/views/layouts/header.php';
         require_once __DIR__ . '/../../resources/views/layouts/sidebar.php';
         require_once __DIR__ . '/../../resources/views/reports/index.php';
@@ -17,6 +26,13 @@ class ReportController {
     }
 
     public function exportExcel() {
+        $filters = [
+            'start_date' => $_GET['start_date'] ?? '',
+            'end_date' => $_GET['end_date'] ?? '',
+            'template_id' => $_GET['template_id'] ?? '',
+            'unit_id' => $_GET['unit_id'] ?? ''
+        ];
+
         header('Content-Type: text/csv; charset=utf-8');
         header('Content-Disposition: attachment; filename=laporan_logbook_rs_' . date('Ymd_His') . '.csv');
 
@@ -27,7 +43,7 @@ class ReportController {
         // Header Row
         fputcsv($output, ['No Ticket', 'Jenis Logbook', 'Unit', 'Kategori', 'Prioritas', 'Status', 'Judul', 'Petugas', 'Tanggal']);
 
-        $logbooks = Logbook::getAll();
+        $logbooks = Logbook::getAll($filters);
         foreach ($logbooks as $row) {
             fputcsv($output, [
                 $row['ticket_number'],

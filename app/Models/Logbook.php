@@ -115,10 +115,72 @@ class Logbook {
         $selesai = $db->query("SELECT COUNT(*) FROM logbooks WHERE status = 'Selesai'")->fetchColumn();
 
         return [
-            'total' => $total,
-            'open' => $open,
-            'proses' => $proses,
-            'selesai' => $selesai
+            'total' => (int)$total,
+            'open' => (int)$open,
+            'proses' => (int)$proses,
+            'selesai' => (int)$selesai
+        ];
+    }
+
+    public static function getReportSummary(array $filters = []): array {
+        $db = Database::getConnection();
+        
+        $where = " WHERE 1=1";
+        $params = [];
+
+        if (!empty($filters['template_id'])) {
+            $where .= " AND l.template_id = ?";
+            $params[] = $filters['template_id'];
+        }
+        if (!empty($filters['unit_id'])) {
+            $where .= " AND l.unit_id = ?";
+            $params[] = $filters['unit_id'];
+        }
+        if (!empty($filters['start_date'])) {
+            $where .= " AND DATE(l.created_at) >= ?";
+            $params[] = $filters['start_date'];
+        }
+        if (!empty($filters['end_date'])) {
+            $where .= " AND DATE(l.created_at) <= ?";
+            $params[] = $filters['end_date'];
+        }
+
+        $sqlTotal = "SELECT COUNT(*) as total,
+                            SUM(CASE WHEN l.status = 'Open' THEN 1 ELSE 0 END) as open_cnt,
+                            SUM(CASE WHEN l.status = 'Proses' THEN 1 ELSE 0 END) as proses_cnt,
+                            SUM(CASE WHEN l.status = 'Selesai' THEN 1 ELSE 0 END) as selesai_cnt
+                     FROM logbooks l " . $where;
+        $stmt = $db->prepare($sqlTotal);
+        $stmt->execute($params);
+        $res = $stmt->fetch();
+        $summary = [
+            'total' => (int)($res['total'] ?? 0),
+            'open' => (int)($res['open_cnt'] ?? 0),
+            'proses' => (int)($res['proses_cnt'] ?? 0),
+            'selesai' => (int)($res['selesai_cnt'] ?? 0),
+        ];
+
+        $sqlTemplate = "SELECT t.id, t.name as template_name,
+                               COUNT(l.id) as total,
+                               SUM(CASE WHEN l.status = 'Open' THEN 1 ELSE 0 END) as open_cnt,
+                               SUM(CASE WHEN l.status = 'Proses' THEN 1 ELSE 0 END) as proses_cnt,
+                               SUM(CASE WHEN l.status = 'Selesai' THEN 1 ELSE 0 END) as selesai_cnt
+                        FROM logbook_templates t
+                        LEFT JOIN logbooks l ON t.id = l.template_id " . str_replace(" WHERE 1=1", "", $where) . "
+                        GROUP BY t.id, t.name";
+        $stmtT = $db->prepare($sqlTemplate);
+        $stmtT->execute($params);
+        $templateBreakdown = $stmtT->fetchAll() ?: [];
+
+        $sqlCat = "SELECT l.category, COUNT(*) as count FROM logbooks l " . $where . " GROUP BY l.category";
+        $stmtC = $db->prepare($sqlCat);
+        $stmtC->execute($params);
+        $categoryBreakdown = $stmtC->fetchAll() ?: [];
+
+        return [
+            'summary' => $summary,
+            'template_breakdown' => $templateBreakdown,
+            'category_breakdown' => $categoryBreakdown
         ];
     }
 

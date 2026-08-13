@@ -5,6 +5,8 @@ require_once __DIR__ . '/../Models/Unit.php';
 require_once __DIR__ . '/../Models/LogbookTemplate.php';
 require_once __DIR__ . '/../Models/LogbookField.php';
 require_once __DIR__ . '/../Models/AuditLog.php';
+require_once __DIR__ . '/../Models/Attachment.php';
+require_once __DIR__ . '/../Models/Comment.php';
 
 class LogbookController {
     public function index() {
@@ -71,7 +73,64 @@ class LogbookController {
         $id = Logbook::create($data);
         AuditLog::log($id, $user['id'] ?? 1, 'Dibuat oleh ' . ($user['name'] ?? 'Petugas'), 'Logbook dibuat baru.');
 
+        // Upload attachment if provided
+        if (isset($_FILES['attachment']) && $_FILES['attachment']['error'] === UPLOAD_ERR_OK) {
+            $tmpName = $_FILES['attachment']['tmp_name'];
+            $fileName = basename($_FILES['attachment']['name']);
+            $fileSize = $_FILES['attachment']['size'];
+            $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+
+            $targetDir = __DIR__ . '/../../public/uploads/';
+            if (!is_dir($targetDir)) {
+                mkdir($targetDir, 0777, true);
+            }
+
+            $newFileName = 'att_' . time() . '_' . rand(100, 999) . '.' . $fileExt;
+            $targetPath = $targetDir . $newFileName;
+
+            if (move_uploaded_file($tmpName, $targetPath)) {
+                require_once __DIR__ . '/../Models/Attachment.php';
+                Attachment::create([
+                    'logbook_id' => $id,
+                    'file_name' => $fileName,
+                    'file_path' => 'uploads/' . $newFileName,
+                    'file_size' => $fileSize,
+                    'file_type' => in_array($fileExt, ['jpg', 'jpeg', 'png', 'gif', 'webp']) ? 'image' : 'document'
+                ]);
+            }
+        }
+
         redirect(BASE_URL . "/index.php?route=logbook_detail&id=" . $id);
+    }
+
+    public function uploadAttachment() {
+        $logbookId = (int)($_POST['logbook_id'] ?? 0);
+        if ($logbookId > 0 && isset($_FILES['attachment']) && $_FILES['attachment']['error'] === UPLOAD_ERR_OK) {
+            $tmpName = $_FILES['attachment']['tmp_name'];
+            $fileName = basename($_FILES['attachment']['name']);
+            $fileSize = $_FILES['attachment']['size'];
+            $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+
+            $targetDir = __DIR__ . '/../../public/uploads/';
+            if (!is_dir($targetDir)) {
+                mkdir($targetDir, 0777, true);
+            }
+
+            $newFileName = 'att_' . time() . '_' . rand(100, 999) . '.' . $fileExt;
+            $targetPath = $targetDir . $newFileName;
+
+            if (move_uploaded_file($tmpName, $targetPath)) {
+                require_once __DIR__ . '/../Models/Attachment.php';
+                Attachment::create([
+                    'logbook_id' => $logbookId,
+                    'file_name' => $fileName,
+                    'file_path' => 'uploads/' . $newFileName,
+                    'file_size' => $fileSize,
+                    'file_type' => in_array($fileExt, ['jpg', 'jpeg', 'png', 'gif', 'webp']) ? 'image' : 'document'
+                ]);
+            }
+        }
+        redirect(BASE_URL . "/index.php?route=logbook_detail&id=" . $logbookId);
     }
 
     public function detail() {
@@ -100,5 +159,21 @@ class LogbookController {
             AuditLog::log($id, $user['id'] ?? 1, 'Status diubah ke ' . $status, 'Diupdate oleh ' . ($user['name'] ?? 'User'));
         }
         redirect(BASE_URL . "/index.php?route=logbook_detail&id=" . $id);
+    }
+
+    public function addComment() {
+        $logbookId = (int)($_POST['logbook_id'] ?? 0);
+        $commentText = trim($_POST['comment'] ?? '');
+        $user = auth_user();
+
+        if ($logbookId > 0 && !empty($commentText)) {
+            Comment::create([
+                'logbook_id' => $logbookId,
+                'user_id' => $user['id'] ?? 1,
+                'comment' => $commentText
+            ]);
+            AuditLog::log($logbookId, $user['id'] ?? 1, 'Komentar Ditambahkan', 'User menambahkan komentar baru.');
+        }
+        redirect(BASE_URL . "/index.php?route=logbook_detail&id=" . $logbookId . "&tab=komentar");
     }
 }

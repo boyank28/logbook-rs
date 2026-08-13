@@ -1,7 +1,6 @@
 <form method="POST" action="<?= BASE_URL ?>/index.php?route=logbook_store" enctype="multipart/form-data">
 <?php
-$btns = '<div style="display:inline-flex; gap:8px;"><a href="' . BASE_URL . '/index.php?route=logbook" class="btn btn-secondary btn-sm">Batal</a><button type="submit" class="btn btn-primary btn-sm">Simpan</button></div>';
-render_topbar('← Tambah Logbook', $btns);
+render_topbar('← Tambah Logbook');
 ?>
 
 
@@ -94,10 +93,16 @@ render_topbar('← Tambah Logbook', $btns);
         </div>
 
         <div class="form-group">
-          <label class="form-label">Lampiran</label>
-          <input type="file" class="form-control">
+          <label class="form-label">Lampiran (Foto/Dokumen)</label>
+          <input type="file" name="attachment" class="form-control" accept="image/*,.pdf,.doc,.docx">
         </div>
       </div>
+    </div>
+
+    <!-- Bottom Action Buttons -->
+    <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:24px; padding-top:16px; border-top:1px solid #e2e8f0;">
+      <a href="<?= BASE_URL ?>/index.php?route=logbook" class="btn btn-secondary">Batal</a>
+      <button type="submit" class="btn btn-primary">💾 Simpan Logbook</button>
     </div>
   </div>
 </div>

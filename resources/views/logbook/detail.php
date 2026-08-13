@@ -7,12 +7,18 @@ render_topbar($titleLink, $detailBtns);
 
 <div class="page-body">
   <div class="card">
+<?php
+require_once __DIR__ . '/../../../app/Models/Attachment.php';
+require_once __DIR__ . '/../../../app/Models/Comment.php';
+$attachments = Attachment::getByLogbook($logbook['id']);
+$comments = Comment::getByLogbook($logbook['id']);
+?>
     <!-- Tabs Header -->
     <div class="nav-tabs">
-      <div class="nav-tab active" onclick="switchTab('detail', this)">Detail</div>
-      <div class="nav-tab" onclick="switchTab('komentar', this)">Komentar (2)</div>
-      <div class="nav-tab" onclick="switchTab('lampiran', this)">Lampiran (1)</div>
-      <div class="nav-tab" onclick="switchTab('riwayat', this)">Riwayat</div>
+      <div class="nav-tab active" id="tab-btn-detail" onclick="switchTab('detail', this)">Detail</div>
+      <div class="nav-tab" id="tab-btn-komentar" onclick="switchTab('komentar', this)">Komentar (<?= count($comments) ?>)</div>
+      <div class="nav-tab" id="tab-btn-lampiran" onclick="switchTab('lampiran', this)">Lampiran (<?= count($attachments) ?>)</div>
+      <div class="nav-tab" id="tab-btn-riwayat" onclick="switchTab('riwayat', this)">Riwayat</div>
     </div>
 
     <!-- Tab 1: Detail -->
@@ -117,42 +123,81 @@ render_topbar($titleLink, $detailBtns);
 
     <!-- Tab 2: Komentar -->
     <div id="tab-komentar" class="tab-pane" style="display: none;">
-      <h4 style="font-size: 14px; font-weight:700; margin-bottom: 16px;">Diskusi & Komentar</h4>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+        <h4 style="font-size: 15px; font-weight:700; color:#0f172a; margin:0; display:flex; align-items:center; gap:8px;">
+          💬 Diskusi & Komentar
+          <span style="font-size: 12px; font-weight: 600; background:#e0f2fe; color:#0284c7; padding: 2px 8px; border-radius: 12px;"><?= count($comments) ?></span>
+        </h4>
+      </div>
       
-      <div style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px;">
-        <div style="background: #f8fafc; padding: 14px; border-radius: 8px; border: 1px solid var(--border-color);">
-          <div style="display:flex; justify-content:space-between; margin-bottom: 6px;">
-            <strong>Siti (Petugas RJ)</strong>
-            <span style="font-size: 11px; color: var(--text-muted);">12-08-2026 10:25</span>
+      <div style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px;">
+        <?php if (empty($comments)): ?>
+          <div style="background: #f8fafc; padding: 24px; text-align:center; color: #64748b; border-radius: 12px; border: 1px dashed #cbd5e1; font-size:13px;">
+            💬 Belum ada diskusi pada logbook ini. Tulis komentar pertama untuk memulai diskusi.
           </div>
-          <p style="font-size: 13px; color: #334155;">Mohon bantuannya mas Budi, antrean IGD & Rawat Jalan cukup padat pagi ini.</p>
-        </div>
-
-        <div style="background: #eff6ff; padding: 14px; border-radius: 8px; border: 1px solid #bfdbfe;">
-          <div style="display:flex; justify-content:space-between; margin-bottom: 6px;">
-            <strong>Budi (IT Support)</strong>
-            <span style="font-size: 11px; color: var(--text-muted);">12-08-2026 10:32</span>
-          </div>
-          <p style="font-size: 13px; color: #1e3a8a;">Siap bu Siti, sedang diperiksa koneksi service authentication SIMRS.</p>
-        </div>
+        <?php else: ?>
+          <?php foreach ($comments as $c): 
+            $rawName = $c['user_name'] ?? 'User';
+            $cleanName = trim(preg_replace('/\s*\(.*?\)/', '', $rawName));
+            $initial = strtoupper(substr($cleanName, 0, 1));
+            $roleName = $c['role_name'] ?? 'Petugas';
+            $isItRole = strpos(strtolower($roleName), 'admin') !== false || strpos(strtolower($roleName), 'it') !== false;
+            $badgeBg = $isItRole ? '#eff6ff' : '#f0fdf4';
+            $badgeText = $isItRole ? '#2563eb' : '#16a34a';
+            $badgeBorder = $isItRole ? '#bfdbfe' : '#bbf7d0';
+            $avatarBg = $isItRole ? 'linear-gradient(135deg, #2563eb, #1d4ed8)' : 'linear-gradient(135deg, #0d9488, #0f766e)';
+          ?>
+            <div style="display:flex; gap: 14px; background: #ffffff; padding: 16px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+              <div style="width: 38px; height: 38px; border-radius: 50%; background: <?= $avatarBg ?>; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0;">
+                <?= htmlspecialchars($initial) ?>
+              </div>
+              <div style="flex: 1;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="font-weight: 700; font-size: 13px; color: #0f172a;"><?= htmlspecialchars($cleanName) ?></span>
+                    <span style="font-size: 10px; font-weight:600; padding: 2px 8px; border-radius: 10px; background: <?= $badgeBg ?>; color: <?= $badgeText ?>; border: 1px solid <?= $badgeBorder ?>;">
+                      <?= htmlspecialchars($roleName) ?>
+                    </span>
+                  </div>
+                  <span style="font-size: 11px; color: #94a3b8; display:flex; align-items:center; gap:4px;">
+                    🕒 <?= date('d M Y, H:i', strtotime($c['created_at'])) ?>
+                  </span>
+                </div>
+                <div style="font-size: 13px; color: #334155; line-height: 1.5; white-space: pre-wrap; background: #f8fafc; padding: 10px 14px; border-radius: 8px; border-left: 3px solid <?= $badgeText ?>;">
+                  <?= htmlspecialchars($c['comment']) ?>
+                </div>
+              </div>
+            </div>
+          <?php endforeach; ?>
+        <?php endif; ?>
       </div>
 
-      <!-- Add Comment Form -->
-      <div class="form-group">
-        <label class="form-label">Tambah Komentar</label>
-        <textarea class="form-control" rows="3" placeholder="Tulis komentar atau update penanganan..."></textarea>
-        <button class="btn btn-primary btn-sm" style="margin-top: 10px;" onclick="alert('Komentar berhasil ditambahkan!')">💬 Kirim Komentar</button>
-      </div>
+      <!-- Add Comment Form Card -->
+      <form method="POST" action="<?= BASE_URL ?>/index.php?route=logbook_add_comment" style="background: #f8fafc; padding: 18px; border-radius: 12px; border: 1px solid #e2e8f0;">
+        <input type="hidden" name="logbook_id" value="<?= $logbook['id'] ?>">
+        <div class="form-group" style="margin: 0;">
+          <label class="form-label" style="font-weight:700; color: #0f172a; margin-bottom: 8px; display:block;">
+            ✏️ Tambah Komentar / Update Penanganan
+          </label>
+          <textarea name="comment" class="form-control" rows="3" required placeholder="Tulis catatan, tanggapan, atau perkembangan penanganan logbook..." style="background: #ffffff; border-radius: 8px; border: 1px solid #cbd5e1; padding: 12px; font-size: 13px;"></textarea>
+          <div style="display:flex; justify-content:flex-end; margin-top: 12px;">
+            <button type="submit" class="btn btn-primary" style="padding: 8px 18px; font-weight:600; border-radius: 8px;">
+              💬 Kirim Komentar
+            </button>
+          </div>
+        </div>
+      </form>
     </div>
 
     <!-- Tab 3: Lampiran -->
     <div id="tab-lampiran" class="tab-pane" style="display: none;">
-      <h4 style="font-size: 14px; font-weight:700; margin-bottom: 16px;">Berkas Lampiran</h4>
+      <h4 style="font-size: 14px; font-weight:700; margin-bottom: 16px;">Berkas & Foto Lampiran</h4>
       
       <div class="table-responsive">
         <table class="custom-table">
           <thead>
             <tr>
+              <th>Preview / File</th>
               <th>Nama File</th>
               <th>Ukuran</th>
               <th>Waktu Unggah</th>
@@ -160,25 +205,53 @@ render_topbar($titleLink, $detailBtns);
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td>📄 <strong>tangkapan_layar_error_login.png</strong></td>
-              <td>425 KB</td>
-              <td>12-08-2026 10:22</td>
-              <td style="text-align: center;">
-                <button class="btn btn-secondary btn-sm" onclick="alert('Mengunduh file...')">📥 Unduh</button>
-              </td>
-            </tr>
+            <?php if (empty($attachments)): ?>
+              <tr>
+                <td colspan="5" style="text-align: center; color: #64748b; padding: 20px;">Belum ada lampiran berkas atau foto.</td>
+              </tr>
+            <?php else: ?>
+              <?php foreach ($attachments as $att): 
+                $ext = strtolower(pathinfo($att['file_name'], PATHINFO_EXTENSION));
+                $isImg = in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp']) || ($att['file_type'] ?? '') === 'image';
+                $fileUrl = BASE_URL . '/' . htmlspecialchars($att['file_path']);
+                $sizeKb = round(($att['file_size'] ?? 0) / 1024, 1);
+              ?>
+              <tr>
+                <td style="width: 80px;">
+                  <?php if ($isImg): ?>
+                    <a href="<?= $fileUrl ?>" target="_blank">
+                      <img src="<?= $fileUrl ?>" alt="<?= htmlspecialchars($att['file_name']) ?>" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px; border: 1px solid #e2e8f0;">
+                    </a>
+                  <?php else: ?>
+                    <span style="font-size: 24px;">📄</span>
+                  <?php endif; ?>
+                </td>
+                <td>
+                  <strong><?= htmlspecialchars($att['file_name']) ?></strong>
+                  <?php if ($isImg): ?>
+                    <div style="font-size: 11px; color: #2563eb;">🖼️ Foto Lampiran</div>
+                  <?php endif; ?>
+                </td>
+                <td><?= $sizeKb > 0 ? $sizeKb . ' KB' : '-' ?></td>
+                <td><?= !empty($att['created_at']) ? date('d-m-Y H:i', strtotime($att['created_at'])) : '-' ?></td>
+                <td style="text-align: center;">
+                  <a href="<?= $fileUrl ?>" download="<?= htmlspecialchars($att['file_name']) ?>" target="_blank" class="btn btn-secondary btn-sm">📥 Unduh / Lihat</a>
+                </td>
+              </tr>
+              <?php endforeach; ?>
+            <?php endif; ?>
           </tbody>
         </table>
       </div>
 
-      <div style="margin-top: 16px;">
-        <label class="form-label">Unggah Lampiran Baru</label>
-        <div style="display: flex; gap: 10px;">
-          <input type="file" class="form-control" style="width: 300px;">
-          <button class="btn btn-primary btn-sm" onclick="alert('File berhasil diunggah!')">Upload</button>
+      <form method="POST" action="<?= BASE_URL ?>/index.php?route=logbook_upload_attachment" enctype="multipart/form-data" style="margin-top: 20px; background: #f8fafc; padding: 16px; border-radius: 8px; border: 1px solid var(--border-color);">
+        <input type="hidden" name="logbook_id" value="<?= $logbook['id'] ?>">
+        <label class="form-label" style="font-weight:700;">Unggah Lampiran / Foto Baru</label>
+        <div style="display: flex; gap: 10px; margin-top: 6px;">
+          <input type="file" name="attachment" class="form-control" accept="image/*,.pdf,.doc,.docx" required style="width: 320px;">
+          <button type="submit" class="btn btn-primary btn-sm">📤 Unggah Berkas</button>
         </div>
-      </div>
+      </form>
     </div>
 
     <!-- Tab 4: Riwayat -->
@@ -234,4 +307,14 @@ function switchTab(tabId, el) {
     el.classList.add('active');
   }
 }
+
+<?php if (isset($_GET['tab'])): ?>
+document.addEventListener('DOMContentLoaded', function() {
+  const tabName = <?= json_encode($_GET['tab']) ?>;
+  const btn = document.getElementById('tab-btn-' + tabName);
+  if (btn) {
+    switchTab(tabName, btn);
+  }
+});
+<?php endif; ?>
 </script>

@@ -63,11 +63,47 @@ function toggleUserDropdown(e) {
   if (dropdown) dropdown.classList.toggle('active');
 }
 
-function markAllRead() {
-  document.querySelectorAll('.notification-item.unread').forEach(item => item.classList.remove('unread'));
+function updateNotifBadgeCount() {
+  const readIds = JSON.parse(localStorage.getItem('read_notif_ids') || '[]');
+  const isAllRead = localStorage.getItem('notif_all_read') === 'true';
   const badge = document.getElementById('notifBadge');
-  if (badge) badge.style.display = 'none';
+  const items = document.querySelectorAll('.notification-item');
+  
+  let unreadCount = 0;
+  items.forEach(item => {
+    const id = item.getAttribute('data-id');
+    if (isAllRead || (id && readIds.includes(id.toString()))) {
+      item.classList.remove('unread');
+    } else if (item.classList.contains('unread')) {
+      unreadCount++;
+    }
+  });
+
+  if (badge) {
+    if (unreadCount > 0) {
+      badge.textContent = unreadCount;
+      badge.style.display = 'inline-block';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
 }
+
+function markAllRead() {
+  localStorage.setItem('notif_all_read', 'true');
+  updateNotifBadgeCount();
+}
+
+function markItemRead(id) {
+  const readIds = JSON.parse(localStorage.getItem('read_notif_ids') || '[]');
+  if (!readIds.includes(id.toString())) {
+    readIds.push(id.toString());
+    localStorage.setItem('read_notif_ids', JSON.stringify(readIds));
+  }
+  updateNotifBadgeCount();
+}
+
+document.addEventListener('DOMContentLoaded', updateNotifBadgeCount);
 
 document.addEventListener('click', function() {
   const nDropdown = document.getElementById('notifDropdown');

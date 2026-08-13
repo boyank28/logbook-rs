@@ -3,3 +3,5 @@ storage/*.sqlite
 storage/database.sqlite
 vendor/
 catatan.md
+public/uploads/*
+!public/uploads/.gitkeep
